@@ -229,7 +229,7 @@ class ImageToImageV1ConfigD(BaseModel):
     )
 
 
-class StabilityAiSolverV1:
+class StabilityAiV1Solver:
     """Base class for solvers (API v1)."""
     def __init__(
         self,
@@ -327,7 +327,7 @@ class StabilityAiSolverV1:
             extras=extras
         )
 
-        response = StabilityAiSolverV1._request(
+        response = StabilityAiV1Solver._request(
             url=STABILITY_AI_API_V1_URL_TEMPLATE.format(
                 engine_id=self.engine_id,
                 query_type=QueryType.TEXT_TO_IMAGE
@@ -353,7 +353,7 @@ class StabilityAiSolverV1:
         extras: Optional[Dict[str, Any]] = None,
     ) -> Union[bytes, List[bytes]]:
         """Perform image-to-image query by image strength."""
-        _init_image = StabilityAiSolverV1._open_image(init_image)
+        _init_image = StabilityAiV1Solver._open_image(init_image)
         parameters = ImageToImageV1ConfigA(
             text_prompts=list([TextPrompt(**prompt) for prompt in prompts]),
             init_image=_init_image,
@@ -368,7 +368,7 @@ class StabilityAiSolverV1:
             extras=extras
         )
 
-        response = StabilityAiSolverV1._request(
+        response = StabilityAiV1Solver._request(
             url=STABILITY_AI_API_V1_URL_TEMPLATE.format(
                 engine_id=self.engine_id,
                 query_type=QueryType.IMAGE_TO_IMAGE
@@ -395,7 +395,7 @@ class StabilityAiSolverV1:
         extras: Optional[Dict[str, Any]] = None,
     ) -> Union[bytes, List[bytes]]:
         """Perform image-to-image query by schedule step."""
-        _init_image = StabilityAiSolverV1._open_image(init_image)
+        _init_image = StabilityAiV1Solver._open_image(init_image)
         parameters = ImageToImageV1ConfigB(
             text_prompts=list([TextPrompt(**prompt) for prompt in prompts]),
             init_image=_init_image,
@@ -411,7 +411,7 @@ class StabilityAiSolverV1:
             extras=extras
         )
 
-        response = StabilityAiSolverV1._request(
+        response = StabilityAiV1Solver._request(
             url=STABILITY_AI_API_V1_URL_TEMPLATE.format(
                 engine_id=self.engine_id,
                 query_type=QueryType.IMAGE_TO_IMAGE
@@ -438,8 +438,8 @@ class StabilityAiSolverV1:
         extras: Optional[Dict[str, Any]] = None,
     ) -> Union[bytes, List[bytes]]:
         """Perform image-to-image query with mask."""
-        _init_image = StabilityAiSolverV1._open_image(init_image)
-        _mask_image = StabilityAiSolverV1._open_image(mask_image)
+        _init_image = StabilityAiV1Solver._open_image(init_image)
+        _mask_image = StabilityAiV1Solver._open_image(mask_image)
         parameters = ImageToImageV1ConfigC(
             text_prompts=list([TextPrompt(**prompt) for prompt in prompts]),
             init_image=_init_image,
@@ -455,7 +455,7 @@ class StabilityAiSolverV1:
             extras=extras
         )
 
-        response = StabilityAiSolverV1._request(
+        response = StabilityAiV1Solver._request(
             url=urlparse.join(
                 STABILITY_AI_API_V1_URL_TEMPLATE.format(
                     engine_id=self.engine_id,
@@ -476,14 +476,14 @@ class StabilityAiSolverV1:
         width: int,
     ) -> Union[bytes, List[bytes]]:
         """Perform image-to-image query to upscale."""
-        _image = StabilityAiSolverV1._open_image(image)
+        _image = StabilityAiV1Solver._open_image(image)
         parameters = ImageToImageV1ConfigD(
             image=_image,
             height=height,
             width=width,
         )
 
-        response = StabilityAiSolverV1._request(
+        response = StabilityAiV1Solver._request(
             url=urlparse.join(
                 STABILITY_AI_API_V1_URL_TEMPLATE.format(
                     engine_id="esrgan-v1-x2plus",
