@@ -292,7 +292,7 @@ class StabilityAiV1Solver:
                     else [data["artifacts"]]
                 )
             )
-        elif self.header.Content_Type == ContentType.APPLICATION_JSON:
+        elif self.header.Content_Type == ContentType.IMAGE_PNG:
             output = response.content
         else:
             pass
