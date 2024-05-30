@@ -456,7 +456,7 @@ class StabilityAiV1Solver:
         )
 
         response = StabilityAiV1Solver._request(
-            url=urlparse.join(
+            url=urlparse.urljoin(
                 STABILITY_AI_API_V1_URL_TEMPLATE.format(
                     engine_id=self.engine_id,
                     query_type=QueryType.IMAGE_TO_IMAGE
@@ -484,7 +484,7 @@ class StabilityAiV1Solver:
         )
 
         response = StabilityAiV1Solver._request(
-            url=urlparse.join(
+            url=urlparse.urljoin(
                 STABILITY_AI_API_V1_URL_TEMPLATE.format(
                     engine_id="esrgan-v1-x2plus",
                     query_type=QueryType.IMAGE_TO_IMAGE
