@@ -9,7 +9,7 @@ from typing import Optional, Union, List, Dict, Any
 import requests
 from urllib import parse as urlparse
 
-STABILITY_AI_API_V1_URL_TEMPLATE = "https://api.stability.ai//v1/generation/{engine_id}/{query_type}"
+STABILITY_AI_API_V1_URL_TEMPLATE = "https://api.stability.ai/v1/generation/{engine_id}/{query_type}"
 AUTHORIZATION_TEMPLATE = "Bearer {api_key}"
 MAX_DIM = sys.maxsize
 
@@ -290,7 +290,7 @@ class StabilityAiV1Solver:
             data = response.json()
             output = list(
                 map(
-                    lambda item: b64decode(item["image"]),
+                    lambda item: b64decode(item["base64"]),
                     data["artifacts"] if isinstance(data["artifacts"], list)
                     else [data["artifacts"]]
                 )
