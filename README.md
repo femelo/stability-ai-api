@@ -24,7 +24,7 @@ python3 -m pip install stability-ai-api
 from stability_ai_api.basic_types import EngineIdV1, StylePreset
 from stability_ai_api.stability_ai_api import StabilityAiV1Solver
 solver = StabilityAiV1Solver(api_key="your-stability-ai-api-key", engine_id=EngineIdV1.SDXL_10)
-prompt = {"text": "a dog with funny hat holding a baseball bat"}
+prompt = {"text": "a dog with a funny hat holding a baseball bat"}
 image = solver.tti_query(  # text-to-image
     prompts=prompt,
     width=1216,
