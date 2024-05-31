@@ -335,7 +335,7 @@ class StabilityAiV1Solver:
                 engine_id=self.engine_id,
                 query_type=QueryType.TEXT_TO_IMAGE
             ),
-            header=self.header.model_dump(exclude_none=True, mode='json'),
+            header=self.header.model_dump(exclude_none=True, by_alias=True, mode='json'),
             payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
