@@ -21,7 +21,7 @@ class Default:
     clip_guidance_preset: str = "NONE"
     sampler: Optional[str] = None
     samples: int = 1
-    seed: int = 0,
+    seed: int = 0
     steps: int = 30
     image_strength: float = 0.35
     step_schedule_start: float = 0.65
