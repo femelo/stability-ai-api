@@ -84,7 +84,10 @@ class DimensionValidator:
     @staticmethod
     def validate_and_raise(engine_id: EngineIdV1, height: int, width: int) -> None:
         if engine_id == EngineIdV1.SDXL_10:
-            valid = (height, width) in SDXL_ALLOWED_DIMENSIONS
+            valid = (
+                ((height, width) in SDXL_ALLOWED_DIMENSIONS) or
+                ((width, height) in SDXL_ALLOWED_DIMENSIONS)
+            )
         elif engine_id == EngineIdV1.SD_16:
             valid = (
                 (SD_16_DIMENSION_BOUNDS[0] <= height <= SD_16_DIMENSION_BOUNDS[1]) and
@@ -97,10 +100,10 @@ class DimensionValidator:
                 ((height <= SD_BETA_DIMENSION_BOUND) or (width <= SD_BETA_DIMENSION_BOUND))
             )
         else:
-            raise ValueError("invalid engine {engine_id}.")
+            raise ValueError(f"invalid engine {engine_id}.")
 
         if not valid:
-            raise ValueError("dimension ({height}, {width}) invalid for engine {engine_id}.")
+            raise ValueError(f"dimension ({height}, {width}) invalid for engine {engine_id}.")
 
 
 class ClipGuidancePreset(AutoName):
