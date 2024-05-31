@@ -13,6 +13,20 @@ STABILITY_AI_API_V1_URL_TEMPLATE = "https://api.stability.ai/v1/generation/{engi
 AUTHORIZATION_TEMPLATE = "Bearer {api_key}"
 MAX_DIM = sys.maxsize
 
+SDXL_ALLOWED_DIMENSIONS = [
+    (1024, 1024),
+    (1152,  896),
+    ( 896, 1152),
+    (1216,  832),
+    (1344,  768),
+    ( 768, 1344),
+    (1536,  640),
+    ( 640, 1536)
+]
+SD_16_DIMENSION_BOUNDS = (320, 1536)
+SD_BETA_DIMENSION_BOUNDS = (128, 896)
+SD_BETA_DIMENSION_BOUND = 512
+
 
 class Default:
     height: int = 512
@@ -64,6 +78,29 @@ class EngineIdV1(StrEnum):
     SD_16 = "stable-diffusion-v1-6"
     SD_BETA = "stable-diffusion-xl-beta-v2-2-2"
     ESRGAN_1 = "esrgan-v1-x2plus"
+
+
+class DimensionValidator:
+    @staticmethod
+    def validate_and_raise(engine_id: EngineIdV1, height: int, width: int) -> None:
+        if engine_id == EngineIdV1.SDXL_10:
+            valid = (height, width) in SDXL_ALLOWED_DIMENSIONS
+        elif engine_id == EngineIdV1.SD_16:
+            valid = (
+                (SD_16_DIMENSION_BOUNDS[0] <= height <= SD_16_DIMENSION_BOUNDS[1]) and
+                (SD_16_DIMENSION_BOUNDS[0] <= width  <= SD_16_DIMENSION_BOUNDS[1])
+            )
+        elif engine_id == EngineIdV1.SD_BETA:
+            valid = (
+                (SD_BETA_DIMENSION_BOUNDS[0] <= height <= SD_BETA_DIMENSION_BOUNDS[1]) and
+                (SD_BETA_DIMENSION_BOUNDS[0] <= width  <= SD_BETA_DIMENSION_BOUNDS[1]) and
+                ((height <= SD_BETA_DIMENSION_BOUND) or (width <= SD_BETA_DIMENSION_BOUND))
+            )
+        else:
+            raise ValueError("invalid engine {engine_id}.")
+
+        if not valid:
+            raise ValueError("dimension ({height}, {width}) invalid for engine {engine_id}.")
 
 
 class ClipGuidancePreset(AutoName):
@@ -295,6 +332,8 @@ class StabilityAiV1Solver:
                     else [data["artifacts"]]
                 )
             )
+            if len(output) == 1:
+                output = output[0]
         elif self.header.content_type == ContentType.IMAGE_PNG:
             output = response.content
         else:
@@ -303,7 +342,7 @@ class StabilityAiV1Solver:
 
     def tti_query(
         self,
-        prompts: List[Dict[str, str]],
+        prompts: Union[Dict[str, str], List[Dict[str, str]]],
         height: int = Default.height,
         width: int = Default.width,
         cfg_scale: int = Default.cfg_scale,
@@ -316,8 +355,10 @@ class StabilityAiV1Solver:
         extras: Optional[Dict[str, Any]] = None
     ) -> Union[bytes, List[bytes]]:
         """Perform text-to-image query."""
+        DimensionValidator.validate_and_raise(self.engine_id, height, width)
+        _prompts = prompts if isinstance(prompts, list) else [prompts]
         parameters = TextToImageV1Config(
-            text_prompts=list([TextPrompt(**prompt) for prompt in prompts]),
+            text_prompts=list([TextPrompt(**prompt) for prompt in _prompts]),
             height=height,
             width=width,
             cfg_scale=cfg_scale,
@@ -343,7 +384,7 @@ class StabilityAiV1Solver:
 
     def iti_query_by_strength(
         self,
-        prompts: List[Dict[str, str]],
+        prompts: Union[Dict[str, str], List[Dict[str, str]]],
         init_image: Union[bytes, str],
         image_strength: float = Default.image_strength,
         cfg_scale: int = Default.cfg_scale,
@@ -357,8 +398,9 @@ class StabilityAiV1Solver:
     ) -> Union[bytes, List[bytes]]:
         """Perform image-to-image query by image strength."""
         _init_image = StabilityAiV1Solver._open_image(init_image)
+        _prompts = prompts if isinstance(prompts, list) else [prompts]
         parameters = ImageToImageV1ConfigA(
-            text_prompts=list([TextPrompt(**prompt) for prompt in prompts]),
+            text_prompts=list([TextPrompt(**prompt) for prompt in _prompts]),
             init_image=_init_image,
             image_strength=image_strength,
             cfg_scale=cfg_scale,
@@ -384,7 +426,7 @@ class StabilityAiV1Solver:
     
     def iti_query_by_schedule(
         self,
-        prompts: List[Dict[str, str]],
+        prompts: Union[Dict[str, str], List[Dict[str, str]]],
         init_image: Union[bytes, str],
         step_schedule_start: float = Default.step_schedule_start,
         step_schedule_end: float = Default.step_schedule_end,
@@ -399,8 +441,9 @@ class StabilityAiV1Solver:
     ) -> Union[bytes, List[bytes]]:
         """Perform image-to-image query by schedule step."""
         _init_image = StabilityAiV1Solver._open_image(init_image)
+        _prompts = prompts if isinstance(prompts, list) else [prompts]
         parameters = ImageToImageV1ConfigB(
-            text_prompts=list([TextPrompt(**prompt) for prompt in prompts]),
+            text_prompts=list([TextPrompt(**prompt) for prompt in _prompts]),
             init_image=_init_image,
             step_schedule_start=step_schedule_start,
             step_schedule_end=step_schedule_end,
@@ -427,7 +470,7 @@ class StabilityAiV1Solver:
     
     def iti_query_with_mask(
         self,
-        prompts: List[Dict[str, str]],
+        prompts: Union[Dict[str, str], List[Dict[str, str]]],
         init_image: Union[bytes, str],
         mask_image: Union[bytes, str],
         mask_source: MaskSource = Default.mask_source,
@@ -443,8 +486,9 @@ class StabilityAiV1Solver:
         """Perform image-to-image query with mask."""
         _init_image = StabilityAiV1Solver._open_image(init_image)
         _mask_image = StabilityAiV1Solver._open_image(mask_image)
+        _prompts = prompts if isinstance(prompts, list) else [prompts]
         parameters = ImageToImageV1ConfigC(
-            text_prompts=list([TextPrompt(**prompt) for prompt in prompts]),
+            text_prompts=list([TextPrompt(**prompt) for prompt in _prompts]),
             init_image=_init_image,
             mask_image=_mask_image,
             mask_source=mask_source,
@@ -502,5 +546,13 @@ class StabilityAiV1Solver:
 
 
 if __name__ == "__main__":
-    solver = StabilityAiV1Solver(api_key="dummy_key")
-    print(solver.header.model_dump(exclude_none=True, by_alias=True, mode="json"))
+    solver = StabilityAiV1Solver(api_key="your-stability-ai-api-key")
+    prompt = {"text": "a dog with funny hat holding a baseball bat"}
+    image = solver.tti_query(
+        prompts=prompt,
+        width=1216,
+        height=832,
+        style_preset=StylePreset.FANTASY_ART
+    )
+    with open("example.png", "wb") as f:
+        f.write(image)
