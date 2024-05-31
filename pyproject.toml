@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -18,8 +18,8 @@ classifiers = [
 ]
 license = {text = "Apache Software License 2.0"}
 dependencies = [
-  pydantic,
-  requests
+  "pydantic~=2.7.1",
+  "requests"
 ]
 
 [project.optional-dependencies]
