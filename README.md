@@ -12,6 +12,12 @@ is implemented, including the following services:
   * with a mask
 * Image-to-Image upscale (model: ESRGAN x2 Upscaler)
 
+## Installation
+
+```bash
+python3 -m pip install stability-ai-api
+```
+
 ## Usage
 
 ```python
