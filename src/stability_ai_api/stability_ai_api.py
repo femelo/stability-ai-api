@@ -2,7 +2,7 @@
 import os
 import sys
 from enum import StrEnum, auto
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from dataclasses import dataclass
 from base64 import b64decode
 from typing import Optional, Union, List, Dict, Any
@@ -11,8 +11,9 @@ from urllib import parse as urlparse
 
 STABILITY_AI_API_V1_URL_TEMPLATE = "https://api.stability.ai//v1/generation/{engine_id}/{query_type}"
 AUTHORIZATION_TEMPLATE = "Bearer {api_key}"
+MAX_DIM = sys.maxsize
 
-@dataclass
+
 class Default:
     height: int = 512
     width: int = 512
@@ -31,10 +32,9 @@ class Default:
 @dataclass
 class Interval:
     inf: Union[int, float] = 0
-    sup: Union[int, float] = sys.maxsize
+    sup: Union[int, float] = MAX_DIM
 
 
-@dataclass
 class ValidRange:
     height: Interval = Interval(128)
     width: Interval = Interval(128)
@@ -54,8 +54,9 @@ class AutoName(StrEnum):
         return name
 
 
-def hyphenize(field: str):
-    return field.replace("_", "-")
+def header_transformer(field: str):
+    field_ = field.replace('id', 'ID')
+    return '-'.join([part.title() for part in field_.split('_')])
 
 
 class QueryType(StrEnum):
@@ -67,13 +68,13 @@ class EngineIdV1(StrEnum):
     SDXL_10 = "stable-diffusion-xl-1024-v1-0"
     SD_16 = "stable-diffusion-v1-6"
     SD_BETA = "stable-diffusion-xl-beta-v2-2-2"
+    ESRGAN_1 = "esrgan-v1-x2plus"
 
 
 class ClipGuidancePreset(AutoName):
     NONE = auto()
     FAST_BLUE = auto()
     FAST_GREEN = auto()
-    NONE = auto()
     SIMPLE = auto()
     SLOW = auto()
     SLOWER = auto()
@@ -134,17 +135,17 @@ class TextPrompt(BaseModel):
 
 
 class HeaderV1(BaseModel):
-    class Config:
-        alias_generator = hyphenize
-    Content_Type: ContentType = Field(default=ContentType.APPLICATION_JSON)
-    Accept: ContentType = Field(default=ContentType.APPLICATION_JSON)
-    Organization: Optional[str] = None
-    Stability_Client_ID: Optional[str] = None
-    Stability_Client_Version: Optional[str] = None
-    Authorization: str
+    model_config = ConfigDict(alias_generator=header_transformer, use_enum_values=True)
+    content_type: ContentType = Field(default=ContentType.APPLICATION_JSON)
+    accept: ContentType = Field(default=ContentType.APPLICATION_JSON)
+    organization: Optional[str] = None
+    stability_client_id: Optional[str] = None
+    stability_client_version: Optional[str] = None
+    authorization: str
 
 
 class GeneralV1Config(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
     text_prompts: List[TextPrompt]
     cfg_scale: int = Field(
         ge=ValidRange.cfg_scale.inf,
@@ -188,6 +189,7 @@ class TextToImageV1Config(GeneralV1Config):
 
 
 class ImageToImageV1ConfigA(GeneralV1Config):
+    model_config = ConfigDict(use_enum_values=True)
     init_image: bytes
     init_image_mode: InitImageMode = InitImageMode.IMAGE_STRENGTH
     image_strength: float = Field(
@@ -197,6 +199,7 @@ class ImageToImageV1ConfigA(GeneralV1Config):
     )
 
 class ImageToImageV1ConfigB(GeneralV1Config):
+    model_config = ConfigDict(use_enum_values=True)
     init_image: bytes
     init_image_mode: InitImageMode = InitImageMode.STEP_SCHEDULE
     step_schedule_start: float = Field(
@@ -212,6 +215,7 @@ class ImageToImageV1ConfigB(GeneralV1Config):
 
 
 class ImageToImageV1ConfigC(GeneralV1Config):
+    model_config = ConfigDict(use_enum_values=True)
     init_image: bytes
     mask_image: bytes
     mask_source: MaskSource
@@ -243,12 +247,12 @@ class StabilityAiV1Solver:
     ):
         self.engine_id = engine_id
         self.header = HeaderV1(
-            Content_Type=content_type,
-            Accept=accept,
-            Organization=organization,
-            Stability_Client_ID=client_id,
-            Stability_Client_Version=client_version,
-            Authorization=AUTHORIZATION_TEMPLATE.format(api_key=api_key),
+            content_type=content_type,
+            accept=accept,
+            organization=organization,
+            stability_client_id=client_id,
+            stability_client_version=client_version,
+            authorization=AUTHORIZATION_TEMPLATE.format(api_key=api_key),
         )
 
     @staticmethod
@@ -332,8 +336,8 @@ class StabilityAiV1Solver:
                 engine_id=self.engine_id,
                 query_type=QueryType.TEXT_TO_IMAGE
             ),
-            header=self.header.model_dump(),
-            payload=parameters.model_dump(),
+            header=self.header.model_dump(exclude_none=True, mode='json'),
+            payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
         return self._extract_data(response)
@@ -373,8 +377,8 @@ class StabilityAiV1Solver:
                 engine_id=self.engine_id,
                 query_type=QueryType.IMAGE_TO_IMAGE
             ),
-            header=self.header.model_dump(),
-            payload=parameters.model_dump(),
+            header=self.header.model_dump(exclude_none=True, mode='json'),
+            payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
         return self._extract_data(response)
@@ -416,8 +420,8 @@ class StabilityAiV1Solver:
                 engine_id=self.engine_id,
                 query_type=QueryType.IMAGE_TO_IMAGE
             ),
-            header=self.header.model_dump(),
-            payload=parameters.model_dump(),
+            header=self.header.model_dump(exclude_none=True, mode='json'),
+            payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
         return self._extract_data(response)
@@ -463,8 +467,8 @@ class StabilityAiV1Solver:
                 ),
                 "masking"
             ),
-            header=self.header.model_dump(),
-            payload=parameters.model_dump(),
+            header=self.header.model_dump(exclude_none=True, mode='json'),
+            payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
         return self._extract_data(response)
@@ -486,13 +490,13 @@ class StabilityAiV1Solver:
         response = StabilityAiV1Solver._request(
             url=urlparse.urljoin(
                 STABILITY_AI_API_V1_URL_TEMPLATE.format(
-                    engine_id="esrgan-v1-x2plus",
+                    engine_id=EngineIdV1.ESRGAN_1,
                     query_type=QueryType.IMAGE_TO_IMAGE
                 ),
                 "upscale"
             ),
-            header=self.header.model_dump(),
-            payload=parameters.model_dump(),
+            header=self.header.model_dump(exclude_none=True, mode='json'),
+            payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
         return self._extract_data(response)
