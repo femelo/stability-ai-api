@@ -54,11 +54,6 @@ class AutoName(StrEnum):
         return name
 
 
-def header_transformer(field: str):
-    field_ = field.replace('id', 'ID')
-    return '-'.join([part.title() for part in field_.split('_')])
-
-
 class QueryType(StrEnum):
     TEXT_TO_IMAGE = "text-to-image"
     IMAGE_TO_IMAGE = "image-to-image"
@@ -135,17 +130,17 @@ class TextPrompt(BaseModel):
 
 
 class HeaderV1(BaseModel):
-    model_config = ConfigDict(alias_generator=header_transformer, use_enum_values=True)
-    content_type: ContentType = Field(default=ContentType.APPLICATION_JSON)
-    accept: ContentType = Field(default=ContentType.APPLICATION_JSON)
-    organization: Optional[str] = None
-    stability_client_id: Optional[str] = None
-    stability_client_version: Optional[str] = None
-    authorization: str
+    model_config = ConfigDict(populate_by_name=True)
+    content_type: ContentType = Field(alias="Content-Type", default=ContentType.APPLICATION_JSON)
+    accept: ContentType = Field(alias="Accept", default=ContentType.APPLICATION_JSON)
+    organization: Optional[str] = Field(alias="Organization", default=None)
+    stability_client_id: Optional[str] = Field(alias="Stability-Client-ID", default=None)
+    stability_client_version: Optional[str] = Field(alias="Stability-Client-Version", default=None)
+    authorization: str = Field(alias="Authorization")
 
 
 class GeneralV1Config(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
+    # model_config = ConfigDict(use_enum_values=True)
     text_prompts: List[TextPrompt]
     cfg_scale: int = Field(
         ge=ValidRange.cfg_scale.inf,
@@ -189,7 +184,7 @@ class TextToImageV1Config(GeneralV1Config):
 
 
 class ImageToImageV1ConfigA(GeneralV1Config):
-    model_config = ConfigDict(use_enum_values=True)
+    # model_config = ConfigDict(use_enum_values=True)
     init_image: bytes
     init_image_mode: InitImageMode = InitImageMode.IMAGE_STRENGTH
     image_strength: float = Field(
@@ -199,7 +194,7 @@ class ImageToImageV1ConfigA(GeneralV1Config):
     )
 
 class ImageToImageV1ConfigB(GeneralV1Config):
-    model_config = ConfigDict(use_enum_values=True)
+    # model_config = ConfigDict(use_enum_values=True)
     init_image: bytes
     init_image_mode: InitImageMode = InitImageMode.STEP_SCHEDULE
     step_schedule_start: float = Field(
@@ -215,7 +210,7 @@ class ImageToImageV1ConfigB(GeneralV1Config):
 
 
 class ImageToImageV1ConfigC(GeneralV1Config):
-    model_config = ConfigDict(use_enum_values=True)
+    # model_config = ConfigDict(use_enum_values=True)
     init_image: bytes
     mask_image: bytes
     mask_source: MaskSource
@@ -238,7 +233,7 @@ class StabilityAiV1Solver:
     def __init__(
         self,
         api_key: str,
-        engine_id: EngineIdV1,
+        engine_id: EngineIdV1 = EngineIdV1.SDXL_10,
         content_type: str = "application/json",
         accept: str = "application/json",
         organization: Optional[str] = None,
@@ -246,14 +241,18 @@ class StabilityAiV1Solver:
         client_version: Optional[str] = None,
     ):
         self.engine_id = engine_id
-        self.header = HeaderV1(
-            content_type=content_type,
-            accept=accept,
-            organization=organization,
-            stability_client_id=client_id,
-            stability_client_version=client_version,
-            authorization=AUTHORIZATION_TEMPLATE.format(api_key=api_key),
-        )
+        try:
+            self.header = HeaderV1(
+                content_type=content_type,
+                accept=accept,
+                organization=organization,
+                stability_client_id=client_id,
+                stability_client_version=client_version,
+                authorization=AUTHORIZATION_TEMPLATE.format(api_key=api_key),
+            )
+        except Exception as e:
+            print(e)
+            raise
 
     @staticmethod
     def _open_image(image: Union[bytes, str]) -> bytes:
@@ -287,7 +286,7 @@ class StabilityAiV1Solver:
 
     def _extract_data(self, response: requests.Response) ->  Union[bytes, List[bytes]]:
         """Extract data from response."""
-        if self.header.Content_Type == ContentType.APPLICATION_JSON:
+        if self.header.content_type == ContentType.APPLICATION_JSON:
             data = response.json()
             output = list(
                 map(
@@ -296,7 +295,7 @@ class StabilityAiV1Solver:
                     else [data["artifacts"]]
                 )
             )
-        elif self.header.Content_Type == ContentType.IMAGE_PNG:
+        elif self.header.content_type == ContentType.IMAGE_PNG:
             output = response.content
         else:
             pass
@@ -377,7 +376,7 @@ class StabilityAiV1Solver:
                 engine_id=self.engine_id,
                 query_type=QueryType.IMAGE_TO_IMAGE
             ),
-            header=self.header.model_dump(exclude_none=True, mode='json'),
+            header=self.header.model_dump(exclude_none=True, by_alias=True, mode='json'),
             payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
@@ -420,7 +419,7 @@ class StabilityAiV1Solver:
                 engine_id=self.engine_id,
                 query_type=QueryType.IMAGE_TO_IMAGE
             ),
-            header=self.header.model_dump(exclude_none=True, mode='json'),
+            header=self.header.model_dump(exclude_none=True, by_alias=True, mode='json'),
             payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
@@ -467,7 +466,7 @@ class StabilityAiV1Solver:
                 ),
                 "masking"
             ),
-            header=self.header.model_dump(exclude_none=True, mode='json'),
+            header=self.header.model_dump(exclude_none=True, by_alias=True, mode='json'),
             payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
@@ -495,8 +494,13 @@ class StabilityAiV1Solver:
                 ),
                 "upscale"
             ),
-            header=self.header.model_dump(exclude_none=True, mode='json'),
+            header=self.header.model_dump(exclude_none=True, by_alias=True, mode='json'),
             payload=parameters.model_dump(exclude_none=True, mode='json'),
         )
 
         return self._extract_data(response)
+
+
+if __name__ == "__main__":
+    solver = StabilityAiV1Solver(api_key="dummy_key")
+    print(solver.header.model_dump(exclude_none=True, by_alias=True, mode="json"))
