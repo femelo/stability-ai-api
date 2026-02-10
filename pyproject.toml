@@ -18,7 +18,7 @@ classifiers = [
 ]
 license = {text = "Apache Software License 2.0"}
 dependencies = [
-  "pydantic~=2.7.1",
+  "pydantic>=2.7.1",
   "requests"
 ]
 
